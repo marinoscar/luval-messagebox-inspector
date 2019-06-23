@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace luval_messagebox_inspector
@@ -13,28 +16,75 @@ namespace luval_messagebox_inspector
     {
         static void Main(string[] args)
         {
-            var textToFind = "SAP GUI for Windows 750";
+            try
+            {
+                DoWork();
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteError("Failed to execute the program with exception {0}\n\nProgram will try to restart in 60 seconds", ex);
+                Thread.Sleep(60000);
+                DoWork();
+            }
+        }
+
+        private static void DoWork()
+        {
+            var windows = DeSerialize();
             while (true)
             {
-                var winHandle = WindowManager.FindWindowByCaption(textToFind);
-                LogMessage("Result: {0}", winHandle);
-                if (winHandle != IntPtr.Zero)
+                foreach (var win in windows)
                 {
-                    var focus = WindowManager.SetForegroundWindow(winHandle);
-                    LogMessage("Windows found, focus set status: {0}", focus);
-                    if (focus)
+                    var winHandle = WindowManager.FindWindowByCaption(win.Title);
+                    Logger.WriteConsole("Result: {0}", winHandle);
+                    if (winHandle != IntPtr.Zero)
                     {
-                        SendKeys.SendWait("N");
-                        LogMessage("Message sent to focused window");
+                        Logger.WriteInfo("Windows with title: {0} found", win.Title);
+                        var focus = WindowManager.SetForegroundWindow(winHandle);
+                        if (focus)
+                        {
+                            Logger.WriteInfo("Windows with title: {0} focused set succesfully", win.Title);
+                            foreach (var key in win.KeysToSend)
+                            {
+                                SendKeys.SendWait(key);
+                            }
+                            Logger.WriteInfo("Windows with title: {0} sent the following message {1}", win.Title, string.Join(",", win.KeysToSend));
+                        }
+                        else
+                        {
+                            Logger.WriteError("Windows with title: {0} failed to set focus, unable to send message", win.Title);
+                        }
+                        LogProcesses();
                     }
                 }
                 Thread.Sleep(3000);
             }
         }
 
-        private static void LogMessage(string format, params object[] p)
+
+        private static void LogProcesses()
         {
-            Console.WriteLine(format, p);
+            var processes = Process.GetProcesses().Select(i => string.Format("Process Name: {0}, Memory: {1}KB, Window Title: {2}", i.ProcessName, (i.WorkingSet64/1024), i.MainWindowTitle));
+            Logger.WriteInfo("{0}", string.Join(Environment.NewLine, processes));
+        }
+
+        private static IEnumerable<WindowToInspect> DeSerialize()
+        {
+            var defaultValue = "[{\"Title\":\"SAP GUI for Windows 750\",\"KeysToSend\":[\"N\"]}]";
+            var fileName = ConfigurationManager.AppSettings["windowsToInspect"];
+            var toDeserialize = string.Empty;
+            if (string.IsNullOrWhiteSpace(fileName) || !File.Exists(fileName))
+            {
+                Logger.WriteWarning("File {0} not found, using default configuration {1}", fileName, defaultValue);
+                toDeserialize = defaultValue;
+            }
+            else
+            {
+                toDeserialize = File.ReadAllText(fileName);
+                Logger.WriteWarning("Loading configuration from file {0} with value\n {1}", fileName, toDeserialize);
+            }
+            var serializer = new JavaScriptSerializer();
+            return serializer.Deserialize<List<WindowToInspect>>(toDeserialize);
         }
     }
 }
