@@ -44,6 +44,8 @@ namespace luval_messagebox_inspector
                         if (focus)
                         {
                             Logger.WriteInfo("Windows with title: {0} focused set succesfully", win.Title);
+                            var fileName = WindowManager.CaptureScreen();
+                            Logger.WriteInfo("Windows with title: {0} screenshot saved in {1}", win.Title, Path.Combine(Environment.CurrentDirectory, fileName));
                             foreach (var key in win.KeysToSend)
                             {
                                 SendKeys.SendWait(key);
@@ -81,7 +83,7 @@ namespace luval_messagebox_inspector
             else
             {
                 toDeserialize = File.ReadAllText(fileName);
-                Logger.WriteWarning("Loading configuration from file {0} with value\n {1}", fileName, toDeserialize);
+                Logger.WriteInfo("Loading configuration from file {0} with value\n {1}", fileName, toDeserialize);
             }
             var serializer = new JavaScriptSerializer();
             return serializer.Deserialize<List<WindowToInspect>>(toDeserialize);

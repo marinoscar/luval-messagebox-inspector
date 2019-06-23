@@ -35,7 +35,7 @@ namespace luval_messagebox_inspector
             {
                 var message = string.Format(format, parameters);
                 eventLog.Source = "Application";
-                eventLog.WriteEntry(message, type);
+                eventLog.WriteEntry(message, type, 101, 1);
                 Console.WriteLine("Type: {0} Message: {1}", type, message);
             }
         }

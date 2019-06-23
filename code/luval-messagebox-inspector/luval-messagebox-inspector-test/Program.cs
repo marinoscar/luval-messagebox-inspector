@@ -20,13 +20,16 @@ WSAECONNRESET: Connection reset by peer
 
 Do you want to see the detailed error description?
 ";
-            var wait = 10;
-            Console.WriteLine("Starting the process waiting {0}", wait);
-            Thread.Sleep(wait * 1000);
-            var res = MessageBox.Show(message, "SAP GUI for Windows 750", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
-            Console.WriteLine("Result from message: {0}", res);
-            Console.Write("Press any key to finish");
-            Console.ReadKey();
+            var wait = 5;
+            while (true)
+            {
+                Console.WriteLine("Starting the process waiting {0}", wait);
+                Thread.Sleep(wait * 1000);
+                var res = MessageBox.Show(message, "SAP GUI for Windows 750", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
+                Console.WriteLine("Result from message: {0}", res);
+                Console.Write("Press any key to continue");
+                Console.ReadKey();
+            }
         }
     }
 }
