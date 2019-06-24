@@ -40,11 +40,14 @@ namespace luval_messagebox_inspector
                     if (winHandle != IntPtr.Zero)
                     {
                         Logger.WriteInfo("Windows with title: {0} found", win.Title);
+                        Logger.WriteInfo("Waiting 30 seconds before sending message");
+                        Thread.Sleep(30000);
                         var focus = WindowManager.SetForegroundWindow(winHandle);
                         if (focus)
                         {
                             Logger.WriteInfo("Windows with title: {0} focused set succesfully", win.Title);
-                            var fileName = WindowManager.CaptureScreen();
+                            var fileName = WindowManager.Capture();
+                            Thread.Sleep(1000);
                             Logger.WriteInfo("Windows with title: {0} screenshot saved in {1}", win.Title, Path.Combine(Environment.CurrentDirectory, fileName));
                             foreach (var key in win.KeysToSend)
                             {

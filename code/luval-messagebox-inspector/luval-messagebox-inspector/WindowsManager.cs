@@ -41,24 +41,59 @@ namespace luval_messagebox_inspector
             return FindWindowByCaption(IntPtr.Zero, caption);
         }
 
-        public static string CaptureScreen()
+        public static string Capture()
         {
-            using (var bmp = new Bitmap(Screen.PrimaryScreen.Bounds.Width,
-                                            Screen.PrimaryScreen.Bounds.Height))
+            var res = TryCapture(ImageFormat.Jpeg);
+            if (res == "FAILED") res = TryCapture(ImageFormat.Gif);
+            if (res == "FAILED") res = TryCapture(ImageFormat.Png);
+            return res;
+        }
+
+        public static string TryCapture(ImageFormat format)
+        {
+            var res = string.Empty;
+            try
             {
-                using (var g = Graphics.FromImage(bmp))
-                {
-                    g.CopyFromScreen(Screen.PrimaryScreen.Bounds.X,
-                                     Screen.PrimaryScreen.Bounds.Y,
-                                     0, 0,
-                                     bmp.Size,
-                                     CopyPixelOperation.SourceCopy);
-                }
-                var fileName = GetFileName();
-                bmp.Save(fileName, ImageFormat.Png);
-                CleanOldCaptures();
-                return fileName;
+                res = Capture(format);
             }
+            catch (CaptureException cEx)
+            {
+                Logger.WriteWarning(cEx.ToString());
+                return "FAILED";
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("CAPTURE FAILED", ex);
+            }
+            return res;
+        }
+
+
+        public static string Capture(ImageFormat format)
+        {
+            var fileName = GetFileName();
+            try
+            {
+                using (var bmp = new Bitmap(Screen.PrimaryScreen.Bounds.Width,
+                                            Screen.PrimaryScreen.Bounds.Height))
+                {
+                    using (var g = Graphics.FromImage(bmp))
+                    {
+                        g.CopyFromScreen(Screen.PrimaryScreen.Bounds.X,
+                                         Screen.PrimaryScreen.Bounds.Y,
+                                         0, 0,
+                                         bmp.Size,
+                                         CopyPixelOperation.SourceCopy);
+                    }
+                    bmp.Save(fileName, format);
+                }
+            }
+            catch(Exception ex)
+            {
+                throw new CaptureException("Failed to take the screenshot", ex);
+            }
+            CleanOldCaptures();
+            return fileName;
         }
 
         private static void CleanOldCaptures()
@@ -78,6 +113,24 @@ namespace luval_messagebox_inspector
             var start = new DateTime(2019, 6, 1);
             var number = Convert.ToInt64(DateTime.UtcNow.Subtract(start).TotalSeconds);
             return string.Format("CAPTURE-{0}.png", number);
+        }
+    }
+
+    public class CaptureException: Exception
+    {
+        public CaptureException()
+        {
+
+        }
+
+        public CaptureException(string message) : base(message)
+        {
+
+        }
+
+        public CaptureException(string message, Exception innerException):base(message, innerException)
+        {
+
         }
     }
 }
