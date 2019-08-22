@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,8 +15,15 @@ namespace luval_messagebox_inspector
 {
     class Program
     {
+        [DllImport("User32.dll", CallingConvention = CallingConvention.StdCall, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool ShowWindow([In] IntPtr hWnd, [In] int nCmdShow);
+
         static void Main(string[] args)
         {
+            var handle = Process.GetCurrentProcess().MainWindowHandle;
+            ShowWindow(handle, 6);
+
             try
             {
                 DoWork();
@@ -31,6 +39,7 @@ namespace luval_messagebox_inspector
         private static void DoWork()
         {
             var windows = DeSerialize();
+            var screenshotLocation = GetScreenshotLocation();
             while (true)
             {
                 foreach (var win in windows)
@@ -46,9 +55,9 @@ namespace luval_messagebox_inspector
                         if (focus)
                         {
                             Logger.WriteInfo("Windows with title: {0} focused set succesfully", win.Title);
-                            var fileName = WindowManager.Capture();
+                            var fileName = WindowManager.Capture(screenshotLocation);
                             Thread.Sleep(1000);
-                            Logger.WriteInfo("Windows with title: {0} screenshot saved in {1}", win.Title, Path.Combine(Environment.CurrentDirectory, fileName));
+                            Logger.WriteInfo("Windows with title: {0} screenshot saved in {1}", win.Title, fileName);
                             foreach (var key in win.KeysToSend)
                             {
                                 SendKeys.SendWait(key);
@@ -64,6 +73,13 @@ namespace luval_messagebox_inspector
                 }
                 Thread.Sleep(3000);
             }
+        }
+
+        private static string GetScreenshotLocation()
+        {
+            var location = ConfigurationManager.AppSettings["ScreenshotLocation"];
+            if (string.IsNullOrWhiteSpace(location)) location = Environment.CurrentDirectory;
+            return location;
         }
 
 

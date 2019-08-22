@@ -41,20 +41,20 @@ namespace luval_messagebox_inspector
             return FindWindowByCaption(IntPtr.Zero, caption);
         }
 
-        public static string Capture()
+        public static string Capture(string fileLocation)
         {
-            var res = TryCapture(ImageFormat.Jpeg);
-            if (res == "FAILED") res = TryCapture(ImageFormat.Gif);
-            if (res == "FAILED") res = TryCapture(ImageFormat.Png);
+            var res = TryCapture(ImageFormat.Jpeg, fileLocation);
+            if (res == "FAILED") res = TryCapture(ImageFormat.Gif, fileLocation);
+            if (res == "FAILED") res = TryCapture(ImageFormat.Png, fileLocation);
             return res;
         }
 
-        public static string TryCapture(ImageFormat format)
+        public static string TryCapture(ImageFormat format, string fileLocation)
         {
             var res = string.Empty;
             try
             {
-                res = Capture(format);
+                res = Capture(format, fileLocation);
             }
             catch (CaptureException cEx)
             {
@@ -69,54 +69,67 @@ namespace luval_messagebox_inspector
         }
 
 
-        public static string Capture(ImageFormat format)
+        public static string Capture(ImageFormat format, string fileLocation)
         {
-            var fileName = GetFileName();
+            var fileName = GetFileName(format);
+            var fullLocation = Path.Combine(fileLocation, fileName);
             try
             {
-                using (var bmp = new Bitmap(Screen.PrimaryScreen.Bounds.Width,
-                                            Screen.PrimaryScreen.Bounds.Height))
+                var screen = ScreenResolution.GetPrimaryScreenBounds();
+                using (var bmp = new Bitmap(screen.Width,
+                                            screen.Height))
                 {
                     using (var g = Graphics.FromImage(bmp))
                     {
-                        g.CopyFromScreen(Screen.PrimaryScreen.Bounds.X,
-                                         Screen.PrimaryScreen.Bounds.Y,
+                        g.CopyFromScreen(screen.X,
+                                         screen.Y,
                                          0, 0,
                                          bmp.Size,
                                          CopyPixelOperation.SourceCopy);
                     }
-                    bmp.Save(fileName, format);
+                    bmp.Save(fullLocation, format);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new CaptureException("Failed to take the screenshot", ex);
             }
             CleanOldCaptures();
-            return fileName;
+            return fullLocation;
         }
 
         private static void CleanOldCaptures()
         {
             var files = Directory.GetFiles(Environment.CurrentDirectory, "*.png").Reverse().ToList();
-            if(files.Count > 30)
+            if (files.Count > 30)
             {
                 var topFiles = files.Take(5);
-                foreach(var file in files)
+                foreach (var file in files)
                 {
                     if (!topFiles.Contains(file)) File.Delete(file);
                 }
             }
         }
-        private static string GetFileName()
+
+        private static string GetFileName(ImageFormat format)
         {
             var start = new DateTime(2019, 6, 1);
             var number = Convert.ToInt64(DateTime.UtcNow.Subtract(start).TotalSeconds);
-            return string.Format("CAPTURE-{0}.png", number);
+            return string.Format("CAPTURE-{0}.{1}", number, GetFileExtension(format));
+        }
+
+        private static string GetFileExtension(ImageFormat format)
+        {
+            if (format == ImageFormat.Gif) return "gif";
+            if (format == ImageFormat.Jpeg) return "jpeg";
+            if (format == ImageFormat.Png) return "png";
+            if (format == ImageFormat.Tiff) return "tiff";
+            if (format == ImageFormat.Bmp) return "bmp";
+            return "jpeg";
         }
     }
 
-    public class CaptureException: Exception
+    public class CaptureException : Exception
     {
         public CaptureException()
         {
@@ -128,7 +141,7 @@ namespace luval_messagebox_inspector
 
         }
 
-        public CaptureException(string message, Exception innerException):base(message, innerException)
+        public CaptureException(string message, Exception innerException) : base(message, innerException)
         {
 
         }
